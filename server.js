@@ -13,7 +13,18 @@ const app = express();
 
 connectDB();
 
-app.use(cors());
+// CORS Configuration
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:3001",
+     "https://eyedonorfrontend.vercel.app/"
+    ],
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 
 app.use("/api/donors", donorRoutes);

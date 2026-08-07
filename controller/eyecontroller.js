@@ -2,19 +2,20 @@ const Donor = require("../model/eyemodel");
 
 exports.createDonor = async (req, res) => {
   try {
-    const { name, age, gender } = req.body;
+    const { fullName, email, phone, notes } = req.body;
 
-    if (!name || age === undefined || !gender) {
+    if (!fullName || !email || !phone) {
       return res.status(400).json({
         success: false,
-        message: "name, age, and gender are required",
+        message: "fullName, email, and phone are required",
       });
     }
 
     const donor = await Donor.create({
-      name,
-      age,
-      gender,
+      fullName,
+      email,
+      phone,
+      notes,
     });
 
     res.status(201).json({
@@ -37,6 +38,108 @@ exports.getAllDonors = async (req, res) => {
       success: true,
       count: donors.length,
       data: donors,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+exports.getDashboard = async (req, res) => {
+  try {
+    const totalUsers = await Donor.countDocuments();
+
+    const totalAccepted = await Donor.countDocuments({
+      status: "Accepted",
+    });
+
+    const totalDeclined = await Donor.countDocuments({
+      status: "Declined",
+    });
+
+    const totalPending = await Donor.countDocuments({
+      status: "Pending",
+    });
+
+    const totalActive = await Donor.countDocuments({
+      isActive: true,
+    });
+
+    const totalInactive = await Donor.countDocuments({
+      isActive: false,
+    });
+
+    res.json({
+      success: true,
+      data: {
+        totalUsers,
+        totalAccepted,
+        totalDeclined,
+        totalPending,
+        totalActive,
+        totalInactive,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+exports.updateStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+
+    if (!["Pending", "Accepted", "Declined"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "status must be Pending, Accepted, or Declined",
+      });
+    }
+
+    const donor = await Donor.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    );
+
+    if (!donor) {
+      return res.status(404).json({
+        success: false,
+        message: "Donor not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: donor,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+exports.deleteDonor = async (req, res) => {
+  try {
+    const donor = await Donor.findByIdAndDelete(req.params.id);
+
+    if (!donor) {
+      return res.status(404).json({
+        success: false,
+        message: "Donor not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Donor deleted successfully",
     });
   } catch (error) {
     res.status(500).json({

@@ -2,20 +2,39 @@ const mongoose = require("mongoose");
 
 const donorSchema = new mongoose.Schema(
   {
-    name: {
+    fullName: {
       type: String,
       required: true,
       trim: true,
     },
-    age: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-    gender: {
+
+    email: {
       type: String,
       required: true,
+      unique: true,
+      lowercase: true,
+    },
+
+    phone: {
+      type: String,
+      required: true,
+    },
+
+    notes: {
+      type: String,
       trim: true,
+      default: "",
+    },
+
+    status: {
+      type: String,
+      enum: ["Pending", "Accepted", "Declined"],
+      default: "Pending",
+    },
+
+    isActive: {
+      type: Boolean,
+      default: true,
     },
   },
   {
