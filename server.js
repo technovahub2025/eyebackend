@@ -8,6 +8,7 @@ const connectDB = require("./config/db");
 const donorRoutes = require("./route/donorroute");
 const adminRoutes = require("./route/adminroute");
 const userRoutes = require("./route/userroute");
+const  termsRoutes=require("../backend/route/termsroute");
 
 const app = express();
 
@@ -19,7 +20,7 @@ app.use(
     origin: [
       "http://localhost:5173",
       "http://localhost:3001",
-     "https://eyedonorfrontend.vercel.app/"
+      "https://eyedonorfrontend.vercel.app"
     ],
     credentials: true,
   })
@@ -30,6 +31,7 @@ app.use(express.json());
 app.use("/api/donors", donorRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api/terms", termsRoutes);
 
 app.get("/", (req, res) => {
   res.json({
