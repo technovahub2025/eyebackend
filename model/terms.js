@@ -37,10 +37,10 @@ const pledgeSchema = new mongoose.Schema(
   }
 );
 
-// Automatically change title based on gender
-pledgeSchema.pre("save", function (next) {
+// Automatically change title based on gender.
+// Mongoose 9 no longer passes `next()` into pre hooks, so use sync/async style.
+pledgeSchema.pre("save", function () {
   this.title = this.gender === "Male" ? "Mr" : "Mrs";
-  next();
 });
 
 module.exports = mongoose.model("terms", pledgeSchema);
