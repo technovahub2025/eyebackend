@@ -10,9 +10,9 @@ const {
 
 const router = express.Router();
 
-router.post("createterms/", createPledge);
-router.get("getall/", getAllPledges);
-router.get("gettermsbyid/:id", getPledgeById);
+router.post("/createterms", createPledge);
+router.get("/getall", getAllPledges);
+router.get("/gettermsbyid/:id", getPledgeById);
 
 
 module.exports = router;
