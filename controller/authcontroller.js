@@ -76,6 +76,78 @@ exports.getAdminProfile = async (req, res) => {
   });
 };
 
+exports.registerUser = async (req, res) => {
+  try {
+    const { fullName, email, phone, notes } = req.body;
+
+    if (!fullName || !email || !phone) {
+      return res.status(400).json({
+        success: false,
+        message: "Full name, email, and phone are required",
+      });
+    }
+
+    const existingDonor = await Donor.findOne({
+      email: email.toLowerCase(),
+      phone,
+    });
+
+    if (existingDonor) {
+      return res.status(409).json({
+        success: false,
+        message: "A donor with this email and phone already exists",
+      });
+    }
+
+    const donor = await Donor.create({
+      fullName,
+      email: email.toLowerCase(),
+      phone,
+      notes: notes || "",
+      status: "Pending",
+      isActive: true,
+    });
+
+    const userSecret = process.env.USER_TOKEN_SECRET;
+
+    if (!userSecret) {
+      return res.status(500).json({
+        success: false,
+        message: "User token secret is not configured",
+      });
+    }
+
+    const token = createSignedToken(
+      {
+        userId: donor._id.toString(),
+        email: donor.email,
+        role: "user",
+        exp: Date.now() + 12 * 60 * 60 * 1000,
+      },
+      userSecret
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "User registered successfully",
+      token,
+      user: {
+        id: donor._id,
+        fullName: donor.fullName,
+        email: donor.email,
+        phone: donor.phone,
+        status: donor.status,
+        notes: donor.notes,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 exports.loginUser = async (req, res) => {
   try {
     const { email, phone } = req.body;
