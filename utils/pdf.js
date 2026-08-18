@@ -1,11 +1,23 @@
 const PAGE_WIDTH = 595.28;
 const PAGE_HEIGHT = 841.89;
-const LEFT_MARGIN = 48;
-const RIGHT_MARGIN = 48;
-const TOP_MARGIN = 54;
-const BOTTOM_MARGIN = 54;
-const FONT_SIZE = 11;
-const LINE_HEIGHT = 16;
+const LEFT_MARGIN = 28;
+const RIGHT_MARGIN = 28;
+const TOP_MARGIN = 44;
+const BOTTOM_MARGIN = 44;
+
+const TITLE_FONT_SIZE = 18;
+const META_FONT_SIZE = 9.5;
+const HEADER_FONT_SIZE = 9.5;
+const CELL_FONT_SIZE = 9.2;
+const LINE_HEIGHT = 12;
+
+const TABLE_COLUMNS = [
+  { key: 'title', label: 'Title', width: 58 },
+  { key: 'name', label: 'Name', width: 132 },
+  { key: 'age', label: 'Age', width: 40, align: 'center' },
+  { key: 'gender', label: 'Gender', width: 68, align: 'center' },
+  { key: 'createdAt', label: 'Created At', width: 207 },
+];
 
 function escapePdfText(text) {
   return String(text)
@@ -14,19 +26,43 @@ function escapePdfText(text) {
     .replace(/\)/g, '\\)');
 }
 
+function formatDateTime(value) {
+  if (!value) {
+    return 'No date';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return date.toLocaleString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
+function measureChars(text, fontSize) {
+  return Math.max(1, Math.floor(text / (fontSize * 0.52)));
+}
+
 function wrapText(text, maxChars) {
-  const words = String(text).split(/\s+/).filter(Boolean);
-  if (words.length === 0) {
+  const normalized = String(text ?? '').trim();
+  if (!normalized) {
     return [''];
   }
 
+  const words = normalized.split(/\s+/);
   const lines = [];
-  let current = words[0];
+  let current = words.shift() || '';
 
-  for (let index = 1; index < words.length; index += 1) {
-    const word = words[index];
+  for (const word of words) {
     if ((current + ' ' + word).length <= maxChars) {
-      current += ' ' + word;
+      current += ` ${word}`;
     } else {
       lines.push(current);
       current = word;
@@ -40,55 +76,92 @@ function wrapText(text, maxChars) {
   return lines;
 }
 
-function formatRecordLine(label, value) {
-  return `${label}: ${value ?? 'N/A'}`;
+function getRowValue(row, key) {
+  if (key === 'createdAt') {
+    return formatDateTime(row.createdAt);
+  }
+
+  if (key === 'title') {
+    return row.title || (row.gender === 'Male' ? 'Mr' : row.gender === 'Female' ? 'Mrs' : 'N/A');
+  }
+
+  return row[key] ?? row.fullName ?? row.name ?? 'N/A';
 }
 
 function buildTermsPdf(rows) {
+  const title = 'VisionGift - Terms Page Data Export';
   const generatedAt = new Date().toLocaleString('en-GB', {
     dateStyle: 'medium',
     timeStyle: 'short',
   });
 
-  const introLines = [
-    'VisionGift - Terms Page Data Export',
-    `Generated: ${generatedAt}`,
-    `Total records: ${rows.length}`,
-    '',
-  ];
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const availableWidth = PAGE_WIDTH - LEFT_MARGIN - RIGHT_MARGIN;
 
-  const bodyLines = rows.flatMap((row, index) => {
-    const createdAt = row.createdAt
-      ? new Date(row.createdAt).toLocaleString('en-GB')
-      : 'No date';
+  const columns = TABLE_COLUMNS.map((column) => ({
+    ...column,
+    x: 0,
+  }));
 
-    return [
-      `Record ${index + 1}`,
-      formatRecordLine('Title', row.title),
-      formatRecordLine('Name', row.name),
-      formatRecordLine('Age', row.age),
-      formatRecordLine('Gender', row.gender),
-      formatRecordLine('Created At', createdAt),
-      '',
-    ];
+  let runningX = LEFT_MARGIN;
+  for (const column of columns) {
+    column.x = runningX;
+    runningX += column.width;
+  }
+
+  const rowGap = 8;
+  const headerRowHeight = 20;
+  const titleBlockHeight = 34;
+  const metaBlockHeight = 16;
+  const startY = PAGE_HEIGHT - TOP_MARGIN - titleBlockHeight - metaBlockHeight - 18;
+  const bottomLimit = BOTTOM_MARGIN + 22;
+
+  const preparedRows = safeRows.map((row, index) => {
+    const cells = columns.map((column) => {
+      const rawValue = getRowValue(row, column.key);
+      const maxChars = measureChars(column.width - 16, CELL_FONT_SIZE);
+      const wrapped = wrapText(rawValue, Math.max(8, maxChars));
+      return {
+        ...column,
+        value: rawValue,
+        lines: wrapped,
+      };
+    });
+
+    const maxLines = Math.max(1, ...cells.map((cell) => cell.lines.length));
+    const height = Math.max(24, maxLines * LINE_HEIGHT + 10);
+
+    return {
+      index,
+      cells,
+      height,
+    };
   });
 
-  const maxCharsPerLine = 82;
-  const allLines = [...introLines, ...bodyLines].flatMap((line) => wrapText(line, maxCharsPerLine));
-
-  const reservedSpace = 86;
-  const linesPerPage = Math.max(
-    1,
-    Math.floor((PAGE_HEIGHT - TOP_MARGIN - BOTTOM_MARGIN - reservedSpace) / LINE_HEIGHT)
-  );
   const pages = [];
+  let currentPage = [];
+  let currentY = startY;
 
-  for (let start = 0; start < allLines.length; start += linesPerPage) {
-    pages.push(allLines.slice(start, start + linesPerPage));
+  for (const row of preparedRows) {
+    const requiredHeight = row.height + rowGap;
+    const needsNewPage = currentPage.length > 0 && currentY - requiredHeight < bottomLimit;
+
+    if (needsNewPage) {
+      pages.push(currentPage);
+      currentPage = [];
+      currentY = startY;
+    }
+
+    currentPage.push(row);
+    currentY -= requiredHeight;
+  }
+
+  if (currentPage.length > 0) {
+    pages.push(currentPage);
   }
 
   if (pages.length === 0) {
-    pages.push(['No terms submissions found.']);
+    pages.push([]);
   }
 
   const objects = [];
@@ -104,8 +177,21 @@ function buildTermsPdf(rows) {
     body: '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
   });
 
-  pages.forEach((pageLines, pageIndex) => {
-    const content = buildPageContent(pageLines, pageIndex + 1, pages.length);
+  pages.forEach((pageRows, pageIndex) => {
+    const content = buildPageContent({
+      rows: pageRows,
+      pageNumber: pageIndex + 1,
+      totalPages: pages.length,
+      title,
+      generatedAt,
+      columns,
+      titleBlockHeight,
+      metaBlockHeight,
+      headerRowHeight,
+      startY,
+      availableWidth,
+    });
+
     objects.push({
       number: contentObjectNumbers[pageIndex],
       body: `<< /Length ${Buffer.byteLength(content, 'utf8')} >>\nstream\n${content}\nendstream`,
@@ -158,37 +244,148 @@ function buildTermsPdf(rows) {
   return Buffer.from(pdf, 'utf8');
 }
 
-function buildPageContent(lines, pageNumber, totalPages) {
-  const titleY = PAGE_HEIGHT - TOP_MARGIN;
-  const footerY = BOTTOM_MARGIN - 10;
-  const safeLines = lines.map(escapePdfText);
+function buildPageContent({
+  rows,
+  pageNumber,
+  totalPages,
+  title,
+  generatedAt,
+  columns,
+  titleBlockHeight,
+  metaBlockHeight,
+  headerRowHeight,
+  startY,
+  availableWidth,
+}) {
+  const parts = [];
+  const escape = escapePdfText;
 
-  const parts = [
-    'BT',
-    `/F1 18 Tf`,
-    `1 0 0 1 ${LEFT_MARGIN} ${titleY} Tm`,
-    `(VisionGift Admin Export) Tj`,
-    `/F1 ${FONT_SIZE} Tf`,
-    `1 0 0 1 ${LEFT_MARGIN} ${titleY - 28} Tm`,
-  ];
-
-  safeLines.forEach((line, index) => {
-    if (index === 0) {
-      parts.push(`(${line}) Tj`);
-    } else {
-      parts.push('T*');
-      parts.push(`(${line}) Tj`);
-    }
-  });
-
-  parts.push('ET');
+  parts.push('q');
   parts.push('BT');
-  parts.push(`/F1 9 Tf`);
-  parts.push(`1 0 0 1 ${LEFT_MARGIN} ${footerY} Tm`);
+  parts.push(`/F1 ${TITLE_FONT_SIZE} Tf`);
+  parts.push(`1 0 0 1 ${LEFT_MARGIN} ${PAGE_HEIGHT - TOP_MARGIN} Tm`);
+  parts.push(`(${escape(title)}) Tj`);
+  parts.push('ET');
+
+  parts.push('BT');
+  parts.push(`/F1 ${META_FONT_SIZE} Tf`);
+  parts.push(`1 0 0 1 ${LEFT_MARGIN} ${PAGE_HEIGHT - TOP_MARGIN - titleBlockHeight} Tm`);
+  parts.push(`(Generated: ${escape(generatedAt)}) Tj`);
+  parts.push('ET');
+
+  parts.push('BT');
+  parts.push(`/F1 ${META_FONT_SIZE} Tf`);
+  parts.push(`1 0 0 1 ${LEFT_MARGIN + 280} ${PAGE_HEIGHT - TOP_MARGIN - titleBlockHeight} Tm`);
   parts.push(`(Page ${pageNumber} of ${totalPages}) Tj`);
   parts.push('ET');
 
+  const tableTopY = startY;
+  const headerY = tableTopY;
+  const headerTextY = headerY - 14;
+  let rowTopY = headerY - headerRowHeight;
+
+  drawRect(parts, LEFT_MARGIN, headerY - headerRowHeight, availableWidth, headerRowHeight, {
+    fill: '0.92 0.95 1 rg',
+    stroke: '0.62 0.69 0.91 RG',
+  });
+
+  for (const column of columns) {
+    drawRect(parts, column.x, headerY - headerRowHeight, column.width, headerRowHeight, {
+      stroke: '0.62 0.69 0.91 RG',
+    });
+    writeText(parts, column.label, column.x + 6, headerTextY, {
+      fontSize: HEADER_FONT_SIZE,
+      align: 'left',
+      bold: true,
+    });
+  }
+
+  if (rows.length === 0) {
+    const emptyHeight = 38;
+    const emptyY = rowTopY - emptyHeight;
+    drawRect(parts, LEFT_MARGIN, emptyY, availableWidth, emptyHeight, {
+      stroke: '0.80 0.82 0.88 RG',
+    });
+    writeText(parts, 'No terms submissions found.', LEFT_MARGIN + 10, emptyY + 13, {
+      fontSize: CELL_FONT_SIZE,
+    });
+    parts.push('Q');
+    return parts.join('\n');
+  }
+
+  rows.forEach((row, rowIndex) => {
+    const rowHeight = row.height;
+    const rowY = rowTopY - rowHeight;
+    const fillColor = rowIndex % 2 === 0 ? '0.99 0.99 1 rg' : '1 1 1 rg';
+
+    drawRect(parts, LEFT_MARGIN, rowY, availableWidth, rowHeight, {
+      fill: fillColor,
+      stroke: '0.84 0.86 0.92 RG',
+    });
+
+    row.cells.forEach((cell) => {
+      drawRect(parts, cell.x, rowY, cell.width, rowHeight, {
+        stroke: '0.84 0.86 0.92 RG',
+      });
+
+      const paddingX = 6;
+      const paddingTop = 9;
+      const maxTextWidth = cell.width - paddingX * 2;
+      const textX =
+        cell.align === 'center'
+          ? cell.x + cell.width / 2
+          : cell.x + paddingX;
+      const textY = rowY + rowHeight - paddingTop;
+
+      cell.lines.slice(0, 6).forEach((line, lineIndex) => {
+        const offsetY = lineIndex * LINE_HEIGHT;
+        writeText(parts, line, textX, textY - offsetY, {
+          fontSize: CELL_FONT_SIZE,
+          align: cell.align || 'left',
+          maxWidth: maxTextWidth,
+        });
+      });
+    });
+
+    rowTopY = rowY - 8;
+  });
+
+  parts.push('Q');
   return parts.join('\n');
+}
+
+function drawRect(parts, x, y, width, height, { fill, stroke } = {}) {
+  if (fill) {
+    parts.push(fill);
+    parts.push(`${x.toFixed(2)} ${y.toFixed(2)} ${width.toFixed(2)} ${height.toFixed(2)} re f`);
+  }
+
+  if (stroke) {
+    parts.push(stroke);
+    parts.push(`${x.toFixed(2)} ${y.toFixed(2)} ${width.toFixed(2)} ${height.toFixed(2)} re S`);
+  }
+}
+
+function writeText(parts, text, x, y, { fontSize, align = 'left', maxWidth = null } = {}) {
+  const safe = escapePdfText(text);
+  const widthEstimate = maxWidth || textWidthEstimate(text, fontSize);
+  let startX = x;
+
+  if (align === 'center') {
+    startX = x - widthEstimate / 2;
+  } else if (align === 'right') {
+    startX = x - widthEstimate;
+  }
+
+  parts.push('BT');
+  parts.push(`/F1 ${fontSize} Tf`);
+  parts.push(`1 0 0 1 ${startX.toFixed(2)} ${y.toFixed(2)} Tm`);
+  parts.push(`(${safe}) Tj`);
+  parts.push('ET');
+}
+
+function textWidthEstimate(text, fontSize) {
+  return String(text).length * fontSize * 0.52;
 }
 
 module.exports = {
