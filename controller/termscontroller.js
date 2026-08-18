@@ -102,3 +102,33 @@ exports.downloadPledgesPdf = async (req, res) => {
     });
   }
 };
+
+// Download single pledge by ID as PDF
+exports.downloadPledgePdfById = async (req, res) => {
+  try {
+    const pledge = await Pledge.findById(req.params.id).lean();
+
+    if (!pledge) {
+      return res.status(404).json({
+        success: false,
+        message: "Pledge not found.",
+      });
+    }
+
+    const pdfBuffer = buildTermsPdf([pledge]);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="terms-data-${pledge._id}.pdf"`
+    );
+    res.setHeader("Content-Length", pdfBuffer.length);
+
+    return res.status(200).send(pdfBuffer);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
