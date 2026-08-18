@@ -378,6 +378,7 @@ function writeText(parts, text, x, y, { fontSize, align = 'left', maxWidth = nul
   }
 
   parts.push('BT');
+  parts.push('0 0 0 rg');
   parts.push(`/F1 ${fontSize} Tf`);
   parts.push(`1 0 0 1 ${startX.toFixed(2)} ${y.toFixed(2)} Tm`);
   parts.push(`(${safe}) Tj`);
