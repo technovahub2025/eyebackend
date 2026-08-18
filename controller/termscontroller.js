@@ -1,4 +1,5 @@
 const Pledge = require("../model/terms");
+const { buildTermsPdf } = require("../utils/pdf");
 
 // Create pledge
 exports.createPledge = async (req, res) => {
@@ -72,6 +73,28 @@ exports.getPledgeById = async (req, res) => {
       success: true,
       data: pledge,
     });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Download all pledges as a PDF report
+exports.downloadPledgesPdf = async (req, res) => {
+  try {
+    const pledges = await Pledge.find().sort({ createdAt: -1 }).lean();
+    const pdfBuffer = buildTermsPdf(pledges);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="terms-data-${new Date().toISOString().slice(0, 10)}.pdf"`
+    );
+    res.setHeader("Content-Length", pdfBuffer.length);
+
+    return res.status(200).send(pdfBuffer);
   } catch (error) {
     return res.status(500).json({
       success: false,
