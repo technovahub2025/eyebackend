@@ -15,7 +15,8 @@ router.post("/createterms", createPledge);
 router.get("/getall", getAllPledges);
 router.get("/gettermsbyid/:id", getPledgeById);
 router.get("/download/pdf", requireAdmin, downloadPledgesPdf);
-router.get("/download/pdf/:id", requireAdmin, downloadPledgePdfById);
+router.get("/download/pdf/:id", downloadPledgePdfById);
+router.get("/download/my/:id", downloadPledgePdfById);
 
 
 module.exports = router;
