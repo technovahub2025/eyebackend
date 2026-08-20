@@ -57,6 +57,40 @@ exports.getAllPledges = async (req, res) => {
   }
 };
 
+// Get pledges with pagination
+exports.getPledgesPaginated = async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, Math.min(100, parseInt(req.query.limit) || 10));
+    const skip = (page - 1) * limit;
+
+    const [pledges, total] = await Promise.all([
+      Pledge.find().sort({ createdAt: -1 }).skip(skip).limit(limit),
+      Pledge.countDocuments(),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return res.status(200).json({
+      success: true,
+      data: pledges,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 // Get one pledge
 exports.getPledgeById = async (req, res) => {
   try {
