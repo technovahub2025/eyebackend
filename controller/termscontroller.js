@@ -132,3 +132,48 @@ exports.downloadPledgePdfById = async (req, res) => {
     });
   }
 };
+
+// Download multiple pledges by IDs as a single PDF
+exports.downloadMultiplePledgesPdf = async (req, res) => {
+  try {
+    const idsParam = req.query.ids || req.params.ids;
+    if (!idsParam) {
+      return res.status(400).json({
+        success: false,
+        message: "ids query parameter is required (comma-separated).",
+      });
+    }
+
+    const ids = String(idsParam)
+      .split(",")
+      .map((id) => id.trim())
+      .filter((id) => id.length > 0);
+
+    const pledges = await Pledge.find({ _id: { $in: ids } })
+      .sort({ createdAt: 1 })
+      .lean();
+
+    if (pledges.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No pledges found for the provided IDs.",
+      });
+    }
+
+    const pdfBuffer = buildTermsPdf(pledges);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="terms-data-${new Date().toISOString().slice(0, 10)}.pdf"`
+    );
+    res.setHeader("Content-Length", pdfBuffer.length);
+
+    return res.status(200).send(pdfBuffer);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
