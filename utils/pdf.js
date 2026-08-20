@@ -1,9 +1,19 @@
+const fs = require('fs');
+const path = require('path');
+
 const PAGE_WIDTH = 595.28;
 const PAGE_HEIGHT = 841.89;
 const LEFT_MARGIN = 28;
 const RIGHT_MARGIN = 28;
 const TOP_MARGIN = 44;
 const BOTTOM_MARGIN = 44;
+const IMAGE_PATH = path.join(__dirname, '../../frontend/src/asset/pdf.jpeg');
+const IMAGE_OBJECT_NUMBER = 4;
+const IMAGE_WIDTH = 168;
+const IMAGE_HEIGHT = 168;
+const IMAGE_GAP = 16;
+const FIRST_PAGE_START_Y =
+  PAGE_HEIGHT - TOP_MARGIN - 34 - 16 - IMAGE_HEIGHT - IMAGE_GAP;
 
 const TITLE_FONT_SIZE = 18;
 const META_FONT_SIZE = 9.5;
@@ -97,6 +107,8 @@ function buildTermsPdf(rows) {
 
   const safeRows = Array.isArray(rows) ? rows : [];
   const availableWidth = PAGE_WIDTH - LEFT_MARGIN - RIGHT_MARGIN;
+  const imageBuffer = fs.readFileSync(IMAGE_PATH);
+  const imageData = imageBuffer.toString('binary');
 
   const columns = TABLE_COLUMNS.map((column) => ({
     ...column,
@@ -113,7 +125,7 @@ function buildTermsPdf(rows) {
   const headerRowHeight = 20;
   const titleBlockHeight = 34;
   const metaBlockHeight = 16;
-  const startY = PAGE_HEIGHT - TOP_MARGIN - titleBlockHeight - metaBlockHeight - 18;
+  const startY = FIRST_PAGE_START_Y;
   const bottomLimit = BOTTOM_MARGIN + 22;
 
   const preparedRows = safeRows.map((row, index) => {
@@ -169,12 +181,20 @@ function buildTermsPdf(rows) {
   const pagesObjectNumber = 2;
   const fontObjectNumber = 3;
 
-  const pageObjectNumbers = pages.map((_, index) => 4 + index * 2);
-  const contentObjectNumbers = pages.map((_, index) => 5 + index * 2);
+  const pageObjectNumbers = pages.map((_, index) => 5 + index * 2);
+  const contentObjectNumbers = pages.map((_, index) => 6 + index * 2);
 
   objects.push({
     number: fontObjectNumber,
     body: '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+  });
+
+  objects.push({
+    number: IMAGE_OBJECT_NUMBER,
+    body:
+      `<< /Type /XObject /Subtype /Image /Width ${readImageDimensions(imageBuffer).width} ` +
+      `/Height ${readImageDimensions(imageBuffer).height} /ColorSpace /DeviceRGB /BitsPerComponent 8 ` +
+      `/Filter /DCTDecode /Length ${imageBuffer.length} >>\nstream\n${imageData}\nendstream`,
   });
 
   pages.forEach((pageRows, pageIndex) => {
@@ -190,6 +210,11 @@ function buildTermsPdf(rows) {
       headerRowHeight,
       startY,
       availableWidth,
+      includeImage: pageIndex === 0,
+      imageObjectNumber: IMAGE_OBJECT_NUMBER,
+      imageWidth: IMAGE_WIDTH,
+      imageHeight: IMAGE_HEIGHT,
+      imageGap: IMAGE_GAP,
     });
 
     objects.push({
@@ -202,7 +227,9 @@ function buildTermsPdf(rows) {
       body:
         `<< /Type /Page /Parent ${pagesObjectNumber} 0 R ` +
         `/MediaBox [0 0 ${PAGE_WIDTH.toFixed(2)} ${PAGE_HEIGHT.toFixed(2)}] ` +
-        `/Resources << /Font << /F1 ${fontObjectNumber} 0 R >> >> ` +
+        `/Resources << /Font << /F1 ${fontObjectNumber} 0 R >>` +
+        (pageIndex === 0 ? ` /XObject << /Im1 ${IMAGE_OBJECT_NUMBER} 0 R >>` : '') +
+        ` >> ` +
         `/Contents ${contentObjectNumbers[pageIndex]} 0 R >>`,
     });
   });
@@ -256,6 +283,11 @@ function buildPageContent({
   headerRowHeight,
   startY,
   availableWidth,
+  includeImage,
+  imageObjectNumber,
+  imageWidth,
+  imageHeight,
+  imageGap,
 }) {
   const parts = [];
   const escape = escapePdfText;
@@ -278,6 +310,15 @@ function buildPageContent({
   parts.push(`1 0 0 1 ${LEFT_MARGIN + 280} ${PAGE_HEIGHT - TOP_MARGIN - titleBlockHeight} Tm`);
   parts.push(`(Page ${pageNumber} of ${totalPages}) Tj`);
   parts.push('ET');
+
+  if (includeImage) {
+    const imageX = LEFT_MARGIN + (availableWidth - imageWidth) / 2;
+    const imageY = startY + headerRowHeight + imageGap;
+    parts.push('q');
+    parts.push(`${imageWidth.toFixed(2)} 0 0 ${imageHeight.toFixed(2)} ${imageX.toFixed(2)} ${imageY.toFixed(2)} cm`);
+    parts.push(`/Im${imageObjectNumber - 3} Do`);
+    parts.push('Q');
+  }
 
   const tableTopY = startY;
   const headerY = tableTopY;
@@ -387,6 +428,41 @@ function writeText(parts, text, x, y, { fontSize, align = 'left', maxWidth = nul
 
 function textWidthEstimate(text, fontSize) {
   return String(text).length * fontSize * 0.52;
+}
+
+function readImageDimensions(buffer) {
+  if (buffer.length < 4 || buffer[0] !== 0xff || buffer[1] !== 0xd8) {
+    throw new Error('pdf.jpeg must be a JPEG image');
+  }
+
+  let offset = 2;
+  while (offset < buffer.length) {
+    while (buffer[offset] === 0xff) {
+      offset += 1;
+    }
+
+    const marker = buffer[offset];
+    offset += 1;
+
+    if (marker === 0xd9 || marker === 0xda) {
+      break;
+    }
+
+    const length = buffer.readUInt16BE(offset);
+    if (
+      marker >= 0xc0 &&
+      marker <= 0xc3 &&
+      offset + 5 < buffer.length
+    ) {
+      const height = buffer.readUInt16BE(offset + 3);
+      const width = buffer.readUInt16BE(offset + 5);
+      return { width, height };
+    }
+
+    offset += length;
+  }
+
+  throw new Error('Could not read pdf.jpeg dimensions');
 }
 
 module.exports = {
