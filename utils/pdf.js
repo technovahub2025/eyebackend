@@ -1,5 +1,4 @@
 const fs = require('fs');
-const fs = require('fs');
 const path = require('path');
 
 const PAGE_WIDTH = 595.28;
