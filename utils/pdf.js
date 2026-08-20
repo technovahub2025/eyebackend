@@ -1,4 +1,5 @@
 const fs = require('fs');
+const fs = require('fs');
 const path = require('path');
 
 const PAGE_WIDTH = 595.28;
@@ -9,11 +10,10 @@ const TOP_MARGIN = 44;
 const BOTTOM_MARGIN = 44;
 const IMAGE_PATH = path.join(__dirname, '../../frontend/src/asset/pdf.jpeg');
 const IMAGE_OBJECT_NUMBER = 4;
-const IMAGE_WIDTH = 168;
-const IMAGE_HEIGHT = 168;
+const IMAGE_WIDTH = 104;
+const IMAGE_HEIGHT = 104;
 const IMAGE_GAP = 16;
-const FIRST_PAGE_START_Y =
-  PAGE_HEIGHT - TOP_MARGIN - 34 - 16 - IMAGE_HEIGHT - IMAGE_GAP;
+const FIRST_PAGE_START_Y = PAGE_HEIGHT - TOP_MARGIN - 34 - 16 - IMAGE_HEIGHT - IMAGE_GAP - 20;
 
 const TITLE_FONT_SIZE = 18;
 const META_FONT_SIZE = 9.5;
@@ -108,7 +108,8 @@ function buildTermsPdf(rows) {
   const safeRows = Array.isArray(rows) ? rows : [];
   const availableWidth = PAGE_WIDTH - LEFT_MARGIN - RIGHT_MARGIN;
   const imageBuffer = fs.readFileSync(IMAGE_PATH);
-  const imageData = imageBuffer.toString('binary');
+  const imageData = imageBuffer.toString('latin1');
+  const imageDimensions = readImageDimensions(imageBuffer);
 
   const columns = TABLE_COLUMNS.map((column) => ({
     ...column,
@@ -192,8 +193,8 @@ function buildTermsPdf(rows) {
   objects.push({
     number: IMAGE_OBJECT_NUMBER,
     body:
-      `<< /Type /XObject /Subtype /Image /Width ${readImageDimensions(imageBuffer).width} ` +
-      `/Height ${readImageDimensions(imageBuffer).height} /ColorSpace /DeviceRGB /BitsPerComponent 8 ` +
+      `<< /Type /XObject /Subtype /Image /Width ${imageDimensions.width} ` +
+      `/Height ${imageDimensions.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 ` +
       `/Filter /DCTDecode /Length ${imageBuffer.length} >>\nstream\n${imageData}\nendstream`,
   });
 
@@ -219,7 +220,7 @@ function buildTermsPdf(rows) {
 
     objects.push({
       number: contentObjectNumbers[pageIndex],
-      body: `<< /Length ${Buffer.byteLength(content, 'utf8')} >>\nstream\n${content}\nendstream`,
+      body: `<< /Length ${Buffer.byteLength(content, 'latin1')} >>\nstream\n${content}\nendstream`,
     });
 
     objects.push({
@@ -250,11 +251,11 @@ function buildTermsPdf(rows) {
   const offsets = [0];
 
   for (const object of objects) {
-    offsets[object.number] = Buffer.byteLength(pdf, 'utf8');
+    offsets[object.number] = Buffer.byteLength(pdf, 'latin1');
     pdf += `${object.number} 0 obj\n${object.body}\nendobj\n`;
   }
 
-  const xrefOffset = Buffer.byteLength(pdf, 'utf8');
+  const xrefOffset = Buffer.byteLength(pdf, 'latin1');
   const maxObjectNumber = objects[objects.length - 1].number;
 
   pdf += `xref\n0 ${maxObjectNumber + 1}\n`;
@@ -268,7 +269,7 @@ function buildTermsPdf(rows) {
   pdf += `trailer\n<< /Size ${maxObjectNumber + 1} /Root ${catalogObjectNumber} 0 R >>\n`;
   pdf += `startxref\n${xrefOffset}\n%%EOF\n`;
 
-  return Buffer.from(pdf, 'utf8');
+  return Buffer.from(pdf, 'latin1');
 }
 
 function buildPageContent({
@@ -313,7 +314,8 @@ function buildPageContent({
 
   if (includeImage) {
     const imageX = LEFT_MARGIN + (availableWidth - imageWidth) / 2;
-    const imageY = startY + headerRowHeight + imageGap;
+    const imageY =
+      PAGE_HEIGHT - TOP_MARGIN - titleBlockHeight - metaBlockHeight - imageHeight - imageGap;
     parts.push('q');
     parts.push(`${imageWidth.toFixed(2)} 0 0 ${imageHeight.toFixed(2)} ${imageX.toFixed(2)} ${imageY.toFixed(2)} cm`);
     parts.push(`/Im${imageObjectNumber - 3} Do`);
