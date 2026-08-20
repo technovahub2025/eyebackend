@@ -115,6 +115,31 @@ exports.getPledgeById = async (req, res) => {
   }
 };
 
+// Delete a pledge by ID
+exports.deletePledge = async (req, res) => {
+  try {
+    const pledge = await Pledge.findByIdAndDelete(req.params.id);
+
+    if (!pledge) {
+      return res.status(404).json({
+        success: false,
+        message: "Pledge not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Pledge deleted successfully.",
+      data: pledge,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 // Download all pledges as a PDF report
 exports.downloadPledgesPdf = async (req, res) => {
   try {
