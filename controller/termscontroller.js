@@ -1,4 +1,5 @@
 const Pledge = require("../model/terms");
+const { buildTermsPdf } = require("../utils/pdf");
 
 // Create pledge
 exports.createPledge = async (req, res) => {
@@ -131,6 +132,26 @@ exports.deletePledge = async (req, res) => {
       message: "Pledge deleted successfully.",
       data: pledge,
     });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Export pledges as PDF
+exports.exportPledgesPdf = async (req, res) => {
+  try {
+    const incomingRows = Array.isArray(req.body?.rows) ? req.body.rows : [];
+    const rows = incomingRows.length > 0 ? incomingRows : await Pledge.find().sort({ createdAt: -1 });
+    const pdfBuffer = buildTermsPdf(rows);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="terms-entries-export.pdf"');
+    res.setHeader('Content-Length', pdfBuffer.length);
+
+    return res.status(200).send(pdfBuffer);
   } catch (error) {
     return res.status(500).json({
       success: false,

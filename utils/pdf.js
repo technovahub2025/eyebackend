@@ -21,11 +21,14 @@ const CELL_FONT_SIZE = 9.2;
 const LINE_HEIGHT = 12;
 
 const TABLE_COLUMNS = [
+  { key: 'entry', label: 'Entry', width: 48, align: 'center' },
   { key: 'title', label: 'Title', width: 58 },
   { key: 'name', label: 'Name', width: 132 },
   { key: 'age', label: 'Age', width: 40, align: 'center' },
   { key: 'gender', label: 'Gender', width: 68, align: 'center' },
-  { key: 'createdAt', label: 'Created At', width: 207 },
+  { key: 'phone', label: 'Phone', width: 78 },
+  { key: 'address', label: 'Address', width: 118 },
+  { key: 'createdAt', label: 'Created At', width: 153 },
 ];
 
 function escapePdfText(text) {
@@ -86,6 +89,10 @@ function wrapText(text, maxChars) {
 }
 
 function getRowValue(row, key) {
+  if (key === 'entry') {
+    return row.entry ?? row.__entry ?? 'N/A';
+  }
+
   if (key === 'createdAt') {
     return formatDateTime(row.createdAt);
   }
@@ -104,7 +111,9 @@ function buildTermsPdf(rows) {
     timeStyle: 'short',
   });
 
-  const safeRows = Array.isArray(rows) ? rows : [];
+  const safeRows = Array.isArray(rows)
+    ? rows.map((row, index) => ({ ...row, __entry: row.entry ?? index + 1 }))
+    : [];
   const availableWidth = PAGE_WIDTH - LEFT_MARGIN - RIGHT_MARGIN;
   const imageBuffer = fs.readFileSync(IMAGE_PATH);
   const imageData = imageBuffer.toString('latin1');
