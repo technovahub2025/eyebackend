@@ -25,10 +25,10 @@ const pledgeSchema = new mongoose.Schema(
       required: true,
       enum: ["Male", "Female"],
     },
-
-   
-
-   
+    phone: {
+      type: String,
+      trim: true,
+    },
 
    
   },
