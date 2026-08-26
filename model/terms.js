@@ -30,6 +30,12 @@ const pledgeSchema = new mongoose.Schema(
       trim: true,
     },
 
+    batchId: {
+      type: String,
+      trim: true,
+      index: true,
+    },
+
    
   },
   {

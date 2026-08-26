@@ -4,7 +4,7 @@ const { buildTermsPdf } = require("../utils/pdf");
 // Create pledge
 exports.createPledge = async (req, res) => {
   try {
-    const { name, age, gender, phone } = req.body;
+    const { name, age, gender, phone, batchId } = req.body;
 
     if (!name || !age || !gender) {
       return res.status(400).json({
@@ -25,6 +25,7 @@ exports.createPledge = async (req, res) => {
       age,
       gender,
       phone,
+      batchId,
     });
 
     return res.status(201).json({
