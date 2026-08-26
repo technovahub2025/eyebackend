@@ -116,6 +116,40 @@ exports.getPledgeById = async (req, res) => {
   }
 };
 
+// Get one pledge as a PDF for admin use
+exports.getPledgePdfById = async (req, res) => {
+  try {
+    const pledge = await Pledge.findById(req.params.id);
+
+    if (!pledge) {
+      return res.status(404).json({
+        success: false,
+        message: "Pledge not found.",
+      });
+    }
+
+    const pdfBuffer = buildTermsPdf([pledge]);
+    const safeName = (pledge.name || "pledge")
+      .toString()
+      .trim()
+      .replace(/[^\w.-]+/g, "_");
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="terms-pledge-${safeName}-${pledge._id}.pdf"`
+    );
+    res.setHeader("Content-Length", pdfBuffer.length);
+
+    return res.status(200).send(pdfBuffer);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 // Delete a pledge by ID
 exports.deletePledge = async (req, res) => {
   try {
