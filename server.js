@@ -14,15 +14,25 @@ const app = express();
 
 connectDB();
 
+const normalizeOrigin = (value) => {
+  if (!value || typeof value !== "string") {
+    return null;
+  }
+
+  return value.trim().replace(/\/$/, "");
+};
+
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
   "http://localhost:3001",
- " https://www.jothieyecare.com",
- "https://jothieyecare.com",
+  "https://www.jothieyecare.com",
+  "https://jothieyecare.com",
   "https://eyedonorfrontend.vercel.app",
   process.env.CLIENT_URL,
-].filter(Boolean);
+]
+  .map(normalizeOrigin)
+  .filter(Boolean);
 
 const corsOptions = {
   origin: (origin, callback) => {
@@ -31,7 +41,7 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    if (allowedOrigins.includes(origin)) {
+    if (allowedOrigins.includes(normalizeOrigin(origin))) {
       return callback(null, true);
     }
 
