@@ -22,10 +22,11 @@ const LINE_HEIGHT = 12;
 
 const TABLE_COLUMNS = [
   { key: 'title', label: 'Title', width: 70 },
-  { key: 'name', label: 'Name', width: 150 },
+  { key: 'name', label: 'Name', width: 130 },
+  { key: 'place', label: 'Place', width: 70 },
   { key: 'age', label: 'Age', width: 42, align: 'center' },
-  { key: 'gender', label: 'Gender', width: 80, align: 'center' },
-  { key: 'phone', label: 'Phone', width: 90 },
+  { key: 'gender', label: 'Gender', width: 70, align: 'center' },
+  { key: 'phone', label: 'Phone', width: 70 },
   { key: 'createdAt', label: 'Created At', width: 107 },
 ];
 
@@ -93,6 +94,10 @@ function getRowValue(row, key) {
 
   if (key === 'title') {
     return row.title || (row.gender === 'Male' ? 'Mr' : row.gender === 'Female' ? 'Mrs' : 'N/A');
+  }
+
+  if (key === 'place') {
+    return row.place || row.location || 'N/A';
   }
 
   return row[key] ?? row.fullName ?? row.name ?? 'N/A';
