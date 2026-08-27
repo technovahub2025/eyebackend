@@ -1,5 +1,9 @@
 const Donor = require("../model/eyemodel");
 
+const mobileNumberPattern = /^[6-9]\d{9}$/;
+
+const isValidMobileNumber = (value) => mobileNumberPattern.test(`${value || ""}`.trim());
+
 exports.createDonor = async (req, res) => {
   try {
     const { fullName, email, phone, notes } = req.body;
@@ -8,6 +12,13 @@ exports.createDonor = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "fullName, email, and phone are required",
+      });
+    }
+
+    if (!isValidMobileNumber(phone)) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number must be exactly 10 digits and start with 6, 7, 8, or 9.",
       });
     }
 

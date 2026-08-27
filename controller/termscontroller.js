@@ -1,6 +1,10 @@
 const Pledge = require("../model/terms");
 const { buildTermsPdf } = require("../utils/pdf");
 
+const mobileNumberPattern = /^[6-9]\d{9}$/;
+
+const isValidMobileNumber = (value) => mobileNumberPattern.test(`${value || ""}`.trim());
+
 // Create pledge
 exports.createPledge = async (req, res) => {
   try {
@@ -17,6 +21,13 @@ exports.createPledge = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Gender must be Male or Female.",
+      });
+    }
+
+    if (phone && !isValidMobileNumber(phone)) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number must be exactly 10 digits and start with 6, 7, 8, or 9.",
       });
     }
 

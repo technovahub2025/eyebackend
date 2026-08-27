@@ -1,6 +1,10 @@
 const crypto = require("crypto");
 const Donor = require("../model/eyemodel");
 
+const mobileNumberPattern = /^[6-9]\d{9}$/;
+
+const isValidMobileNumber = (value) => mobileNumberPattern.test(`${value || ""}`.trim());
+
 const createSignedToken = (payload, secret) => {
   const tokenPayload = Buffer.from(JSON.stringify(payload)).toString(
     "base64url"
@@ -87,6 +91,13 @@ exports.registerUser = async (req, res) => {
       });
     }
 
+    if (!isValidMobileNumber(phone)) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number must be exactly 10 digits and start with 6, 7, 8, or 9.",
+      });
+    }
+
     const existingDonor = await Donor.findOne({
       email: email.toLowerCase(),
       phone,
@@ -156,6 +167,13 @@ exports.loginUser = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Email and phone are required",
+      });
+    }
+
+    if (!isValidMobileNumber(phone)) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number must be exactly 10 digits and start with 6, 7, 8, or 9.",
       });
     }
 

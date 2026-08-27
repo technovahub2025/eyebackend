@@ -1,5 +1,7 @@
 const mongoose = require("mongoose");
 
+const mobileNumberPattern = /^[6-9]\d{9}$/;
+
 const pledgeSchema = new mongoose.Schema(
   {
     title: {
@@ -28,6 +30,7 @@ const pledgeSchema = new mongoose.Schema(
     phone: {
       type: String,
       trim: true,
+      match: [mobileNumberPattern, "Phone number must be exactly 10 digits and start with 6, 7, 8, or 9."],
     },
 
     batchId: {
