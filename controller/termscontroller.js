@@ -8,12 +8,12 @@ const isValidMobileNumber = (value) => mobileNumberPattern.test(`${value || ""}`
 // Create pledge
 exports.createPledge = async (req, res) => {
   try {
-    const { name, age, gender, phone, batchId } = req.body;
+    const { name, age, gender, place, phone, batchId } = req.body;
 
-    if (!name || !age || !gender || !phone) {
+    if (!name || !age || !gender || !place || !phone) {
       return res.status(400).json({
         success: false,
-        message: "Name, age, gender, and phone are required.",
+        message: "Name, age, gender, place, and phone are required.",
       });
     }
 
@@ -35,6 +35,7 @@ exports.createPledge = async (req, res) => {
       name,
       age,
       gender,
+      place,
       phone,
       batchId,
     });

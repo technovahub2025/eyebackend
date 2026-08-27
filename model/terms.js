@@ -27,6 +27,11 @@ const pledgeSchema = new mongoose.Schema(
       required: true,
       enum: ["Male", "Female"],
     },
+    place: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     phone: {
       type: String,
       trim: true,
