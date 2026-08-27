@@ -10,10 +10,10 @@ exports.createPledge = async (req, res) => {
   try {
     const { name, age, gender, phone, batchId } = req.body;
 
-    if (!name || !age || !gender) {
+    if (!name || !age || !gender || !phone) {
       return res.status(400).json({
         success: false,
-        message: "Name, age and gender are required.",
+        message: "Name, age, gender, and phone are required.",
       });
     }
 
