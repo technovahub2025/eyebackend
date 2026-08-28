@@ -9,6 +9,7 @@ const isValidMobileNumber = (value) => mobileNumberPattern.test(`${value || ""}`
 exports.createPledge = async (req, res) => {
   try {
     const { name, age, gender, place, phone, batchId } = req.body;
+    const ageValue = Number(age);
 
     if (!name || !age || !gender || !place || !phone) {
       return res.status(400).json({
@@ -24,6 +25,13 @@ exports.createPledge = async (req, res) => {
       });
     }
 
+    if (!Number.isFinite(ageValue) || ageValue < 1 || ageValue > 99) {
+      return res.status(400).json({
+        success: false,
+        message: "Age must be between 1 and 99.",
+      });
+    }
+
     if (phone && !isValidMobileNumber(phone)) {
       return res.status(400).json({
         success: false,
@@ -33,7 +41,7 @@ exports.createPledge = async (req, res) => {
 
     const pledge = await Pledge.create({
       name,
-      age,
+      age: ageValue,
       gender,
       place,
       phone,
