@@ -6,7 +6,7 @@ const pledgeSchema = new mongoose.Schema(
   {
     title: {
       type: String,
-      enum: ["Mr", "Mrs"],
+      enum: ["Mr", "Ms"],
     },
 
     name: {
@@ -54,7 +54,7 @@ const pledgeSchema = new mongoose.Schema(
 // Automatically change title based on gender.
 // Mongoose 9 no longer passes `next()` into pre hooks, so use sync/async style.
 pledgeSchema.pre("save", function () {
-  this.title = this.gender === "Male" ? "Mr" : "Mrs";
+  this.title = this.gender === "Male" ? "Mr" : "Ms";
 });
 
 module.exports = mongoose.model("terms", pledgeSchema);
