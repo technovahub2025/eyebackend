@@ -201,7 +201,10 @@ exports.exportPledgesPdf = async (req, res) => {
   try {
     const incomingRows = Array.isArray(req.body?.rows) ? req.body.rows : [];
     const rows = incomingRows.length > 0 ? incomingRows : await Pledge.find().sort({ createdAt: -1 });
-    const pdfBuffer = buildTermsPdf(rows);
+    const pdfBuffer = buildTermsPdf(rows, {
+      includePlace: false,
+      includeCreatedAt: false,
+    });
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="terms-entries-export.pdf"');
